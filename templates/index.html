@@ -28,6 +28,12 @@
   </head>
   <body>
     <h1>BJJ Training Log</h1>
+    <h2>This Week</h2>
+    <div class="card" style="margin-bottom: 16px;">
+      <div id="week-range" class="muted"></div>
+      <div id="week-stats" style="font-size: 16px; margin-top: 8px;"></div>
+      <div id="week-focus" style="font-size: 14px; color: #444; margin-top: 8px;"></div>
+    </div>
     <div class="card">
       <form id="log-form">
         <input id="date-input" type="date" />
@@ -57,6 +63,9 @@
     <ul id="logs"></ul>
 
     <script>
+      const weekRangeEl = document.getElementById("week-range");
+      const weekStatsEl = document.getElementById("week-stats");
+      const weekFocusEl = document.getElementById("week-focus");
       const listEl = document.getElementById("logs");
       const form = document.getElementById("log-form");
       const dateInput = document.getElementById("date-input");
@@ -81,6 +90,45 @@
         notesInput.disabled = busy;
         focusInput.disabled = busy;
         dateInput.disabled = busy;
+      }
+
+      async function loadWeeklySummary() {
+        const res = await fetch("/summary/week");
+        if (!res.ok) {
+          weekRangeEl.textContent = "";
+          weekStatsEl.textContent = "Weekly summary unavailable.";
+          weekFocusEl.textContent = "";
+          return;
+        }
+
+        const data = await res.json();
+
+        weekRangeEl.textContent = `Week: ${data.week_start} → ${data.week_end}`;
+        weekStatsEl.textContent = `Total sessions: ${data.total_sessions}`;
+
+        const byFocus = data.by_focus || {};
+        const entries = Object.entries(byFocus);
+
+        if (!entries.length) {
+          weekFocusEl.textContent = "No sessions logged yet this week.";
+          return;
+        }
+
+        // Find top focus
+        entries.sort((a, b) => b[1] - a[1]);
+        const [topFocus, topCount] = entries[0];
+
+        // Guard retention count (case-insensitive match)
+        let guardCount = 0;
+        for (const [focus, count] of entries) {
+          if (focus.toLowerCase().includes("guard")) {
+            guardCount += count;
+          }
+        }
+
+        weekFocusEl.textContent =
+          `Top focus: ${topFocus} (${topCount})` +
+          (guardCount ? ` • Guard-focused sessions: ${guardCount}` : "");
       }
 
       async function loadLogs() {
@@ -176,6 +224,7 @@
         setTimeout(() => setOk(""), 1200);
       });
 
+      loadWeeklySummary();
       loadLogs();
     </script>
 
