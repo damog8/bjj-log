@@ -27,11 +27,26 @@
     </style>
   </head>
   <body>
-    <h1>BJJ Training Log/h1>
+    <h1>BJJ Training Log</h1>
     <div class="card">
-      <form id="message-form">
-        <input id="message-input" type="text" placeholder="Type a message…" required />
-        <button id="send-btn" type="submit">Send</button>
+      <form id="log-form">
+        <input id="date-input" type="date" />
+        <select id="focus-input">
+          <option value="">Focus area…</option>
+          <option>Guard retention</option>
+          <option>Passing</option>
+          <option>Sweeps</option>
+          <option>Submissions</option>
+          <option>Escapes</option>
+          <option>Open sparring</option>
+        </select>
+        <input
+          id="notes-input"
+          type="text"
+          placeholder="One key thing you worked on or learned…"
+          required
+        />
+        <button id="send-btn" type="submit">Log session</button>
       </form>
 
       <div id="error" class="error"></div>
@@ -39,12 +54,14 @@
     </div>
 
     <h2>Sessions</h2>
-    <ul id="messages"></ul>
+    <ul id="logs"></ul>
 
     <script>
-      const messagesEl = document.getElementById("messages");
-      const form = document.getElementById("message-form");
-      const input = document.getElementById("message-input");
+      const listEl = document.getElementById("logs");
+      const form = document.getElementById("log-form");
+      const dateInput = document.getElementById("date-input");
+      const focusInput = document.getElementById("focus-input");
+      const notesInput = document.getElementById("notes-input");
       const errorEl = document.getElementById("error");
       const okEl = document.getElementById("ok");
       const sendBtn = document.getElementById("send-btn");
@@ -61,46 +78,47 @@
 
       function setBusy(busy) {
         sendBtn.disabled = busy;
-        input.disabled = busy;
+        notesInput.disabled = busy;
+        focusInput.disabled = busy;
+        dateInput.disabled = busy;
       }
 
-      async function loadMessages() {
-        setError("");
-        messagesEl.innerHTML = "<li class='muted'>Loading…</li>";
+      async function loadLogs() {
+        listEl.innerHTML = "<li class='muted'>Loading…</li>";
 
-        const res = await fetch("/messages");
+        const res = await fetch("/logs");
         if (!res.ok) {
-          messagesEl.innerHTML = "";
-          setError("Failed to load messages.");
+          listEl.innerHTML = "";
+          setError("Failed to load sessions.");
           return;
         }
 
         const data = await res.json();
-        messagesEl.innerHTML = "";
+        listEl.innerHTML = "";
 
         if (!data.length) {
-          messagesEl.innerHTML = "<li class='muted'>No messages yet.</li>";
+          listEl.innerHTML = "<li class='muted'>No sessions logged yet.</li>";
           return;
         }
 
-        data.forEach(m => {
+        data.forEach(l => {
           const li = document.createElement("li");
 
           const wrap = document.createElement("div");
           wrap.className = "msg";
 
-          const text = document.createElement("div");
-          text.className = "text";
-          text.textContent = m.text;
+          const left = document.createElement("div");
+          left.className = "text";
+          left.innerHTML = `<strong>${l.focus}</strong><br>${l.notes}`;
 
-          const time = document.createElement("div");
-          time.className = "time";
-          time.textContent = m.created_at ? new Date(m.created_at).toLocaleString() : "";
+          const right = document.createElement("div");
+          right.className = "time";
+          right.textContent = l.session_date;
 
-          wrap.appendChild(text);
-          wrap.appendChild(time);
+          wrap.appendChild(left);
+          wrap.appendChild(right);
           li.appendChild(wrap);
-          messagesEl.appendChild(li);
+          listEl.appendChild(li);
         });
       }
 
@@ -109,16 +127,27 @@
         setError("");
         setOk("");
 
-        const text = input.value.trim();
-        if (!text) {
-          setError("Please type something first.");
+        const focus = focusInput.value.trim();
+        const notes = notesInput.value.trim();
+        const session_date = dateInput.value;
+
+        if (!focus || !notes) {
+          setError("Please select a focus area and add notes.");
           return;
         }
 
         setBusy(true);
 
-        // POST with query param (matches your FastAPI signature)
-        const res = await fetch(`/messages?text=${encodeURIComponent(text)}`, {
+        const params = new URLSearchParams({
+          focus,
+          notes,
+        });
+
+        if (session_date) {
+          params.append("session_date", session_date);
+        }
+
+        const res = await fetch(`/logs?${params.toString()}`, {
           method: "POST"
         });
 
@@ -130,21 +159,24 @@
             if (body?.detail?.[0]?.msg) {
               setError(body.detail[0].msg);
             } else {
-              setError("Save failed.");
+              setError("Failed to save session.");
             }
           } catch {
-            setError("Save failed.");
+            setError("Failed to save session.");
           }
           return;
         }
 
-        input.value = "";
-        setOk("Saved ✔");
-        await loadMessages();
+        notesInput.value = "";
+        focusInput.value = "";
+        dateInput.value = "";
+
+        setOk("Session logged ✔");
+        await loadLogs();
         setTimeout(() => setOk(""), 1200);
       });
 
-      loadMessages();
+      loadLogs();
     </script>
 
   </body>
