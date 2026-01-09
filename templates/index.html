@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Hello World Messages</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; }
+      h1 { margin: 0 0 6px; font-size: 44px; letter-spacing: -0.5px; }
+      h2 { margin-top: 26px; }
+      .muted { color: #666; font-size: 14px; margin-bottom: 18px; }
+
+      .card { border: 1px solid #e6e6e6; border-radius: 14px; padding: 16px; background: #fff; }
+      form { display: flex; gap: 10px; margin: 0 0 12px; }
+      input { flex: 1; padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 10px; }
+      button { padding: 12px 16px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; background: #f6f6f6; cursor: pointer; }
+      button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+      .error { color: #b00020; margin-top: 8px; min-height: 20px; }
+      .ok { color: #0a7a2f; margin-top: 8px; min-height: 20px; }
+
+      ul { list-style: none; padding: 0; margin: 0; }
+      li { padding: 10px 0; border-bottom: 1px solid #eee; }
+      .msg { display: flex; justify-content: space-between; gap: 12px; }
+      .text { font-size: 16px; }
+      .time { color: #777; font-size: 12px; white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Messages</h1>
+    <div class="card">
+      <form id="message-form">
+        <input id="message-input" type="text" placeholder="Type a message…" required />
+        <button id="send-btn" type="submit">Send</button>
+      </form>
+
+      <div id="error" class="error"></div>
+      <div id="ok" class="ok"></div>
+    </div>
+
+    <h2>Saved</h2>
+    <ul id="messages"></ul>
+
+    <script>
+      const messagesEl = document.getElementById("messages");
+      const form = document.getElementById("message-form");
+      const input = document.getElementById("message-input");
+      const errorEl = document.getElementById("error");
+      const okEl = document.getElementById("ok");
+      const sendBtn = document.getElementById("send-btn");
+
+      function setError(msg) {
+        errorEl.textContent = msg || "";
+        okEl.textContent = "";
+      }
+
+      function setOk(msg) {
+        okEl.textContent = msg || "";
+        errorEl.textContent = "";
+      }
+
+      function setBusy(busy) {
+        sendBtn.disabled = busy;
+        input.disabled = busy;
+      }
+
+      async function loadMessages() {
+        setError("");
+        messagesEl.innerHTML = "<li class='muted'>Loading…</li>";
+
+        const res = await fetch("/messages");
+        if (!res.ok) {
+          messagesEl.innerHTML = "";
+          setError("Failed to load messages.");
+          return;
+        }
+
+        const data = await res.json();
+        messagesEl.innerHTML = "";
+
+        if (!data.length) {
+          messagesEl.innerHTML = "<li class='muted'>No messages yet.</li>";
+          return;
+        }
+
+        data.forEach(m => {
+          const li = document.createElement("li");
+
+          const wrap = document.createElement("div");
+          wrap.className = "msg";
+
+          const text = document.createElement("div");
+          text.className = "text";
+          text.textContent = m.text;
+
+          const time = document.createElement("div");
+          time.className = "time";
+          time.textContent = m.created_at ? new Date(m.created_at).toLocaleString() : "";
+
+          wrap.appendChild(text);
+          wrap.appendChild(time);
+          li.appendChild(wrap);
+          messagesEl.appendChild(li);
+        });
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        setError("");
+        setOk("");
+
+        const text = input.value.trim();
+        if (!text) {
+          setError("Please type something first.");
+          return;
+        }
+
+        setBusy(true);
+
+        // POST with query param (matches your FastAPI signature)
+        const res = await fetch(`/messages?text=${encodeURIComponent(text)}`, {
+          method: "POST"
+        });
+
+        setBusy(false);
+
+        if (!res.ok) {
+          try {
+            const body = await res.json();
+            if (body?.detail?.[0]?.msg) {
+              setError(body.detail[0].msg);
+            } else {
+              setError("Save failed.");
+            }
+          } catch {
+            setError("Save failed.");
+          }
+          return;
+        }
+
+        input.value = "";
+        setOk("Saved ✔");
+        await loadMessages();
+        setTimeout(() => setOk(""), 1200);
+      });
+
+      loadMessages();
+    </script>
+
+  </body>
+</html>
