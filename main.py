@@ -20,14 +20,10 @@ Base.metadata.create_all(bind=engine)
 def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.get("/hello/{name}")
-def say_hello(name: str):
-    return {"message": f"Hello {name}, this app is alive on the internet."}
-
 @app.get("/api")
 def api_root():
     return {
-        "name": "Hello World Messages",
+        "name": "BJJ Training Log",
         "status": "ok",
         "endpoints": ["/messages (GET, POST)"]
     }
