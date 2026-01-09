@@ -55,6 +55,10 @@
         <button id="send-btn" type="submit">Log session</button>
       </form>
 
+      <button id="quick-guard" type="button" style="margin-top: 10px;">
+        Quick Log: Guard Retention
+      </button>
+
       <div id="error" class="error"></div>
       <div id="ok" class="ok"></div>
     </div>
@@ -74,6 +78,13 @@
       const errorEl = document.getElementById("error");
       const okEl = document.getElementById("ok");
       const sendBtn = document.getElementById("send-btn");
+      const quickGuardBtn = document.getElementById("quick-guard");
+
+      quickGuardBtn.addEventListener("click", () => {
+        focusInput.value = "Guard retention";
+        notesInput.focus();
+      });
+ 
 
       function setError(msg) {
         errorEl.textContent = msg || "";
