@@ -5,13 +5,13 @@ from fastapi import Request
 from fastapi import Query
 
 from database import engine, SessionLocal
-from models import Base, Message
+from models import Base
 
-from routers import messages
+from routers import logs
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
-app.include_router(messages.router)
+app.include_router(logs.router)
 
 # Create database tables on startup
 Base.metadata.create_all(bind=engine)
